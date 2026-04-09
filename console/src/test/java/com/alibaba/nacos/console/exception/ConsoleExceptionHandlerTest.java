@@ -119,6 +119,12 @@ class ConsoleExceptionHandlerTest {
         resultActions.andExpect(MockMvcResultMatchers.status().is(NacosApiException.SERVER_ERROR));
     }
     
+    @Test
+    void handleNoResourceFoundException() throws Exception {
+        ResultActions resultActions = mockMvc.perform(get("/.well-known/appspecific/com.chrome.devtools.json"));
+        resultActions.andExpect(MockMvcResultMatchers.status().isNotFound());
+    }
+    
     private void mockControllerThrowException(Exception exceptionClass) throws NacosException {
         doThrow(exceptionClass).when(consoleNamespaceController).getNamespaceDetail(anyString());
     }

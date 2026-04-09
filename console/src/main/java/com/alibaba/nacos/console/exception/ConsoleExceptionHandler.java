@@ -27,6 +27,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ControllerAdvice;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.util.HtmlUtils;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -59,15 +60,25 @@ public class ConsoleExceptionHandler {
         return ResponseEntity.status(e.getErrCode()).body(ExceptionUtil.getAllExceptionMsg(e));
     }
     
+    @ExceptionHandler(NoResourceFoundException.class)
+    private ResponseEntity<Object> handleNoResourceFoundException(HttpServletRequest request, NoResourceFoundException e) {
+        String uri = request.getRequestURI();
+        LOGGER.warn("CONSOLE resource not found {}", uri);
+        return buildResponseEntity(uri, HttpStatus.NOT_FOUND, e);
+    }
+    
     @ExceptionHandler(Exception.class)
     private ResponseEntity<Object> handleException(HttpServletRequest request, Exception e) {
         String uri = request.getRequestURI();
         LOGGER.error("CONSOLE {}", uri, e);
+        return buildResponseEntity(uri, HttpStatus.INTERNAL_SERVER_ERROR, e);
+    }
+    
+    private ResponseEntity<Object> buildResponseEntity(String uri, HttpStatus httpStatus, Exception e) {
+        String errorMessage = HtmlUtils.htmlEscape(ExceptionUtil.getAllExceptionMsg(e), "utf-8");
         if (uri.contains(Commons.NACOS_SERVER_VERSION_V2)) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body(RestResultUtils.failed(HtmlUtils.htmlEscape(ExceptionUtil.getAllExceptionMsg(e), "utf-8")));
+            return ResponseEntity.status(httpStatus).body(RestResultUtils.failedWithMsg(httpStatus.value(), errorMessage));
         }
-        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(HtmlUtils.htmlEscape(ExceptionUtil.getAllExceptionMsg(e), "utf-8"));
+        return ResponseEntity.status(httpStatus).body(errorMessage);
     }
 }
